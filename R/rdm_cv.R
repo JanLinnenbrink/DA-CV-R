@@ -2,10 +2,9 @@
 #'
 #' @param samples sf object with POINT geometries. Must have a column "ID".
 #' @param folds_k integer, number of folds
-#' @param out_path output directory
 #' @return Data frame with fold assignments
 #' @export
-RDM_CV <- function(samples, folds_k, out_path) {
+RDM_CV <- function(samples, folds_k) {
 	stopifnot(inherits(samples, "sf"))
 
 	coords <- sf::st_coordinates(samples)

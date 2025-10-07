@@ -4,14 +4,12 @@
 \alias{RDM_CV}
 \title{Random k-fold CV (RDM-CV)}
 \usage{
-RDM_CV(samples, folds_k, out_path)
+RDM_CV(samples, folds_k)
 }
 \arguments{
 \item{samples}{sf object with POINT geometries. Must have a column "ID".}
 
 \item{folds_k}{integer, number of folds}
-
-\item{out_path}{output directory}
 }
 \value{
 Data frame with fold assignments

@@ -9,7 +9,6 @@ DA_CV(
   target,
   env_stack,
   nodata_value,
-  out_path,
   folds_k,
   cate_num,
   autoc_threshold
@@ -24,8 +23,6 @@ and attributes including target variable and (optionally) sample IDs.}
 \item{env_stack}{A \code{SpatRaster}. Stack of environmental predictor rasters.}
 
 \item{nodata_value}{Numeric. Value in \code{target} that indicates missing data.}
-
-\item{out_path}{Character. Directory to write outputs.}
 
 \item{folds_k}{Integer. Number of folds for cross-validation.}
 
@@ -44,14 +41,38 @@ for "similar" prediction regions and spatial cross-validation (SP-CV) for
 adversarial validation.
 }
 \examples{
-\dontrun{
 library(sf)
 library(terra)
-samples <- st_read("samples.shp")
-target <- rast("agb.tif")
-envs <- rast(list.files("env/", pattern="tif$", full.names=TRUE))
 
-DA_CV(samples, target, envs, -9999, "outputs/", 5, 5, 0.3)
-}
+# Create a simple raster as "target"
+target <- rast(nrows = 10, ncols = 10, xmin = 0, xmax = 10, ymin = 0, ymax = 10)
+values(target) <- matrix(runif(100, 50, 150), nrow = 10, ncol = 10)
+
+# Create two simple environmental predictor rasters
+env1 <- rast(target); values(env1) <- runif(ncell(env1))
+env2 <- rast(target); values(env2) <- runif(ncell(env2))
+env_stack <- c(env1, env2)
+
+# Generate some random sample points inside the raster extent
+set.seed(42)
+pts <- data.frame(
+  x = runif(10, 0, 10),
+  y = runif(10, 0, 10),
+  ID = 1:10
+)
+samples <- st_as_sf(pts, coords = c("x", "y"), crs = crs(target))
+
+# Run DA-CV with small folds for demo
+# (requires RDM_CV() and spatial_plus_cv() to be implemented in the package)
+out <- DA_CV(
+  samples = samples,
+  target = target,
+  env_stack = env_stack,
+  nodata_value = NA,
+  folds_k = 2,
+  cate_num = 2,
+  autoc_threshold = 0.3
+)
+print(out)
 
 }

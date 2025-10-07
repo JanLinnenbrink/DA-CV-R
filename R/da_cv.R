@@ -10,7 +10,6 @@
 #' @param target A \code{SpatRaster}. Target raster (e.g., biomass).
 #' @param env_stack A \code{SpatRaster}. Stack of environmental predictor rasters.
 #' @param nodata_value Numeric. Value in \code{target} that indicates missing data.
-#' @param out_path Character. Directory to write outputs.
 #' @param folds_k Integer. Number of folds for cross-validation.
 #' @param cate_num Integer. Number of categories for SP-CV stratification.
 #' @param autoc_threshold Numeric. Spatial autocorrelation threshold for SP-CV.
@@ -19,18 +18,42 @@
 #' Additionally writes probability and category rasters, and a CSV with fold assignments.
 #'
 #' @examples
-#' \dontrun{
 #' library(sf)
 #' library(terra)
-#' samples <- st_read("samples.shp")
-#' target <- rast("agb.tif")
-#' envs <- rast(list.files("env/", pattern="tif$", full.names=TRUE))
 #'
-#' DA_CV(samples, target, envs, -9999, "outputs/", 5, 5, 0.3)
-#' }
+#' # Create a simple raster as "target"
+#' target <- rast(nrows = 10, ncols = 10, xmin = 0, xmax = 10, ymin = 0, ymax = 10)
+#' values(target) <- matrix(runif(100, 50, 150), nrow = 10, ncol = 10)
+#'
+#' # Create two simple environmental predictor rasters
+#' env1 <- rast(target); values(env1) <- runif(ncell(env1))
+#' env2 <- rast(target); values(env2) <- runif(ncell(env2))
+#' env_stack <- c(env1, env2)
+#'
+#' # Generate some random sample points inside the raster extent
+#' set.seed(42)
+#' pts <- data.frame(
+#'   x = runif(10, 0, 10),
+#'   y = runif(10, 0, 10),
+#'   ID = 1:10
+#' )
+#' samples <- st_as_sf(pts, coords = c("x", "y"), crs = crs(target))
+#'
+#' # Run DA-CV with small folds for demo
+#' # (requires RDM_CV() and spatial_plus_cv() to be implemented in the package)
+#' out <- DA_CV(
+#'   samples = samples,
+#'   target = target,
+#'   env_stack = env_stack,
+#'   nodata_value = NA,
+#'   folds_k = 2,
+#'   cate_num = 2,
+#'   autoc_threshold = 0.3
+#' )
+#' print(out)
 #'
 #' @export
-DA_CV <- function(samples, target, env_stack, nodata_value, out_path, folds_k, cate_num, autoc_threshold) {
+DA_CV <- function(samples, target, env_stack, nodata_value, folds_k, cate_num, autoc_threshold) {
 	start_time <- Sys.time()
 
 	# ---- Check inputs ----
@@ -55,7 +78,7 @@ DA_CV <- function(samples, target, env_stack, nodata_value, out_path, folds_k, c
 	valid_cells <- setdiff(all_cells, nodata_cells)
 	set.seed(123)
 	pred_cells <- sample(valid_cells, n_samples, replace = FALSE)
-	pred_envs <- terra::extract(env_stack, pred_cells, ID = FALSE)
+	pred_envs <- terra::extract(env_stack, pred_cells)
 
 	# Prepare adversarial validation dataset
 	X <- rbind(sample_envs, pred_envs)
@@ -72,6 +95,9 @@ DA_CV <- function(samples, target, env_stack, nodata_value, out_path, folds_k, c
 
 	# ---- Step 2: Apply classifier to all grid cells ----
 	all_envs <- terra::as.data.frame(env_stack, na.rm = FALSE)
+	all_envs <- as.data.frame(all_envs) # ensure type matches X
+	stopifnot(identical(names(X), names(all_envs))) # sanity check
+
 	all_probs <- stats::predict(rf, all_envs, type = "prob")[, 2]
 
 	prob_raster <- target
@@ -86,8 +112,8 @@ DA_CV <- function(samples, target, env_stack, nodata_value, out_path, folds_k, c
 	dissim_ratio <- 1 - sim_ratio
 
 	# ---- Step 3: Run RDM-CV and SP-CV ----
-	RDM_folds <- RDM_CV(samples, folds_k, out_path)
-	SP_folds <- spatial_plus_cv(samples, cate_num, autoc_threshold, folds_k, out_path)
+	RDM_folds <- RDM_CV(samples, folds_k)
+	SP_folds <- spatial_plus_cv(samples, cate_num, autoc_threshold, folds_k)
 
 	DA_folds <- data.frame(
 		ID = if ("ID" %in% names(samples)) samples$ID else seq_len(nrow(samples)),
