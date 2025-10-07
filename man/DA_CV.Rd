@@ -38,8 +38,7 @@ A data frame with DA-CV fold assignments and sample coordinates.
 Additionally writes probability and category rasters, and a CSV with fold assignments.
 }
 \description{
-Implements prediction-domain adaptive cross-validation (DA-CV) as described in
-Zhao et al. (2025). This method combines random-domain cross-validation (RDM-CV)
+Implements prediction-domain adaptive cross-validation (DA-CV). This method combines random-domain cross-validation (RDM-CV)
 for "similar" prediction regions and spatial cross-validation (SP-CV) for
 "dissimilar" prediction regions, based on dissimilarity quantification via
 adversarial validation.

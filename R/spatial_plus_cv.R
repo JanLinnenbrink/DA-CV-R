@@ -10,7 +10,6 @@
 #' }
 #'
 #' @param samples An \code{sf} object containing point geometries and a unique ID column.
-#' @param env A data frame or matrix of environmental variables (first column must match point IDs).
 #' @param response_name A data frame or matrix with target variable(s) (first column must match point IDs,
 #'   last column treated as the target).
 #' @param cate_col_start Integer, index of first categorical column in \code{env} (1-based).

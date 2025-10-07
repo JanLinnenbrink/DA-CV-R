@@ -30,8 +30,6 @@ last column treated as the target).}
 If set to 0, each point is its own cluster (SP2).}
 
 \item{method}{Character, one of \code{"SP"}, \code{"SP1"}, or \code{"SP2"}.}
-
-\item{env}{A data frame or matrix of environmental variables (first column must match point IDs).}
 }
 \value{
 A data frame with columns:
@@ -54,7 +52,7 @@ and ensemble majority voting over coordinates, environment, and target values.
 \examples{
 \dontrun{
 library(sf)
-pts <- st_as_sf(data.frame(ID = 1:10, x = runif(10), y = runif(10)), 
+pts <- st_as_sf(data.frame(ID = 1:10, x = runif(10), y = runif(10)),
                 coords = c("x", "y"), crs = 4326)
 env <- data.frame(ID = 1:10, var1 = rnorm(10), var2 = runif(10), target = runif(10))
 pts <- cbind(pts, env)
