@@ -10,7 +10,7 @@ Imports:
     cluster,
     klaR,
     pROC,
-    randomForest,
+    ranger,
     sf,
     stats,
     terra

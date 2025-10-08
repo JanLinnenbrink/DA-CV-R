@@ -64,6 +64,8 @@ DA_CV <- function(samples, target, env_stack, nodata_value, folds_k, cate_num, a
 	row_length <- nrow(target)
 	col_length <- ncol(target)
 
+	samples <- samples[, c(names(env_stack), names(target))]
+
 	# ---- Step 1: Dissimilarity quantification ----
 	# Find no-data cells in target
 	nodata_cells <- which(terra::values(target) == nodata_value)
@@ -83,10 +85,14 @@ DA_CV <- function(samples, target, env_stack, nodata_value, folds_k, cate_num, a
 	# Prepare adversarial validation dataset
 	X <- rbind(sample_envs, pred_envs)
 	y <- c(rep(1, n_samples), rep(0, n_samples))
+	trainDat <- data.frame(y = y, X)
+	trainDat <- trainDat[complete.cases(trainDat), ]
 
-	rf <- randomForest::randomForest(x = X, y = as.factor(y), ntree = 500)
+	rf <- ranger::ranger(formula = y ~ ., trainDat, num.trees = 500, probability = TRUE)
 
-	probs <- stats::predict(rf, X, type = "prob")[, 2]
+	pred <- stats::predict(rf, data = X, type = "response")
+	probs <- pred$predictions[, 2]
+
 	roc_obj <- pROC::roc(y, probs)
 	auc_val <- pROC::auc(roc_obj)
 	diss_value <- ifelse(auc_val <= 0.5, 0, round((auc_val - 0.5) * 2, 2))
@@ -98,7 +104,8 @@ DA_CV <- function(samples, target, env_stack, nodata_value, folds_k, cate_num, a
 	all_envs <- as.data.frame(all_envs) # ensure type matches X
 	stopifnot(identical(names(X), names(all_envs))) # sanity check
 
-	all_probs <- stats::predict(rf, all_envs, type = "prob")[, 2]
+	all_pred <- stats::predict(rf, all_envs, type = "response")
+	all_probs <- all_pred$predictions[, 2]
 
 	prob_raster <- target
 	terra::values(prob_raster) <- all_probs
@@ -111,17 +118,44 @@ DA_CV <- function(samples, target, env_stack, nodata_value, folds_k, cate_num, a
 	sim_ratio <- sim_count / (sim_count + dissim_count)
 	dissim_ratio <- 1 - sim_ratio
 
-	# ---- Step 3: Run RDM-CV and SP-CV ----
-	RDM_folds <- RDM_CV(samples, folds_k)
-	SP_folds <- spatial_plus_cv(samples, cate_num, autoc_threshold, folds_k)
+	samples <- terra::extract(cate_raster, terra::vect(samples), ID = FALSE, bind = TRUE) |>
+		sf::st_as_sf()
 
-	DA_folds <- data.frame(
-		ID = if ("ID" %in% names(samples)) samples$ID else seq_len(nrow(samples)),
-		fold_RDM = RDM_folds$fold,
-		fold_SP = SP_folds$fold,
-		x = sample_coords[, 1],
-		y = sample_coords[, 2]
+	print(table(samples_cat$category))
+
+	# ---- Step 3: Run CV on subsets ----
+	similar_samples <- samples[samples$category == "similar", ]
+	dissim_samples <- samples[samples$category == "dissimilar", ]
+	RDM_folds <- RDM_CV(similar_samples, folds_k)
+	SP_folds <- spatial_plus_cv(
+		samples = dissim_samples,
+		response_name = names(target),
+		cate_col_start = 0,
+		cate_col_end = 0,
+		k = folds_k,
+		sp_threshold = autoc_threshold,
+		method = "SP"
 	)
+
+	# ---- Step 4: Combine results ----
+	folds_df <- data.frame(
+		ID = if ("ID" %in% names(samples)) samples$ID else seq_len(nrow(samples)),
+		fold = NA_integer_,
+		x = sample_coords[, 1],
+		y = sample_coords[, 2],
+		category = samples$category
+	)
+
+	# Assign folds based on category
+	folds_df$fold[folds_df$category == "similar"] <- RDM_folds$fold
+	folds_df$fold[folds_df$category == "dissimilar"] <- SP_folds$fold
+
+	# Drop the category column if you don’t want it in the final output
+	folds_df$category <- NULL
+
+	# Convert back to sf
+	DA_folds <- sf::st_as_sf(folds_df, coords = c("x", "y")) |>
+		sf::st_set_crs(sf::st_crs(samples))
 
 	runtime <- Sys.time() - start_time
 	message("DA-CV completed in ", round(runtime, 1), " seconds.")
