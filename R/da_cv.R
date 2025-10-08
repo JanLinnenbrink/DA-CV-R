@@ -118,24 +118,29 @@ DA_CV <- function(samples, target, env_stack, nodata_value, folds_k, cate_num, a
 	sim_ratio <- sim_count / (sim_count + dissim_count)
 	dissim_ratio <- 1 - sim_ratio
 
-	samples <- terra::extract(cate_raster, terra::vect(samples), ID = FALSE, bind = TRUE) |>
-		sf::st_as_sf()
+	samples_category <- terra::extract(cate_raster, terra::vect(samples), ID = FALSE, raw = TRUE)
+	samples$category <- samples_category[, 1]
 
-	print(table(samples_cat$category))
+	print(table(samples$category))
 
 	# ---- Step 3: Run CV on subsets ----
-	similar_samples <- samples[samples$category == "similar", ]
-	dissim_samples <- samples[samples$category == "dissimilar", ]
-	RDM_folds <- RDM_CV(similar_samples, folds_k)
-	SP_folds <- spatial_plus_cv(
-		samples = dissim_samples,
-		response_name = names(target),
-		cate_col_start = 0,
-		cate_col_end = 0,
-		k = folds_k,
-		sp_threshold = autoc_threshold,
-		method = "SP"
-	)
+	similar_samples <- samples[samples$category == 1, ]
+	dissim_samples <- samples[samples$category == 2, ]
+	if (nrow(similar_samples) > 0) {
+		RDM_folds <- RDM_CV(similar_samples, folds_k)
+	}
+
+	if (nrow(dissim_samples) > 0) {
+		SP_folds <- spatial_plus_cv(
+			samples = dissim_samples,
+			response_name = names(target),
+			cate_col_start = 0,
+			cate_col_end = 0,
+			k = folds_k,
+			sp_threshold = autoc_threshold,
+			method = "SP"
+		)
+	}
 
 	# ---- Step 4: Combine results ----
 	folds_df <- data.frame(
@@ -146,9 +151,15 @@ DA_CV <- function(samples, target, env_stack, nodata_value, folds_k, cate_num, a
 		category = samples$category
 	)
 
+	print(nrow(similar_samples))
 	# Assign folds based on category
-	folds_df$fold[folds_df$category == "similar"] <- RDM_folds$fold
-	folds_df$fold[folds_df$category == "dissimilar"] <- SP_folds$fold
+	if (nrow(similar_samples) > 0) {
+		folds_df$fold[folds_df$category == "similar"] <- RDM_folds$fold
+	}
+
+	if (nrow(dissim_samples) > 0) {
+		folds_df$fold[folds_df$category == "dissimilar"] <- SP_folds$fold
+	}
 
 	# Drop the category column if you don’t want it in the final output
 	folds_df$category <- NULL
