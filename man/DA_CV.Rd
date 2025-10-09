@@ -26,12 +26,12 @@ and attributes including target variable and (optionally) sample IDs.}
 
 \item{folds_k}{Integer. Number of folds for cross-validation.}
 
-\item{cate_num}{Integer. Number of categories for SP-CV stratification.}
+\item{cate_num}{Integer. Number of categorical covariates.}
 
 \item{autoc_threshold}{Numeric. Spatial autocorrelation threshold for SP-CV.}
 }
 \value{
-A data frame with DA-CV fold assignments and sample coordinates.
+A list containing a data frame with DA-CV fold assignments, the dissimilarity raster, as well as the threshold used to classify this raster.
 Additionally writes probability and category rasters, and a CSV with fold assignments.
 }
 \description{

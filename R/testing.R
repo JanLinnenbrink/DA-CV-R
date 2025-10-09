@@ -49,26 +49,5 @@ example_DA_CV <- function() {
 		autoc_threshold = 0.3
 	)
 
-	# load AGB data
-	samples <- st_read("~/git/spatial-or-random-cross-validation-for-map-accuracy-estimation/data/sample_sf.gpkg")
-	r = rast(dir(
-		"~/git/spatial-or-random-cross-validation-for-map-accuracy-estimation/data/raster_data/",
-		pattern = "\\.tif$",
-		full.names = TRUE
-	))
-
-	target <- r$ABG1
-	env_stack <- r[[setdiff(names(r), "ABG1")]]
-
-	out <- DA_CV(
-		samples = samples,
-		target = target,
-		env_stack = env_stack,
-		nodata_value = NA,
-		folds_k = 10,
-		cate_num = 2,
-		autoc_threshold = 0.3
-	)
-
-	return(list(samples = samples, target = target, env_stack = env_stack, out = out))
+	return(list(samples = samples, target = target, env_stack = env_stack, out = out$DA_folds))
 }

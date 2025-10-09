@@ -11,10 +11,10 @@
 #' @param env_stack A \code{SpatRaster}. Stack of environmental predictor rasters.
 #' @param nodata_value Numeric. Value in \code{target} that indicates missing data.
 #' @param folds_k Integer. Number of folds for cross-validation.
-#' @param cate_num Integer. Number of categories for SP-CV stratification.
+#' @param cate_num Integer. Number of categorical covariates.
 #' @param autoc_threshold Numeric. Spatial autocorrelation threshold for SP-CV.
 #'
-#' @return A data frame with DA-CV fold assignments and sample coordinates.
+#' @return A list containing a data frame with DA-CV fold assignments, the dissimilarity raster, as well as the threshold used to classify this raster.
 #' Additionally writes probability and category rasters, and a CSV with fold assignments.
 #'
 #' @examples
@@ -151,14 +151,13 @@ DA_CV <- function(samples, target, env_stack, nodata_value, folds_k, cate_num, a
 		category = samples$category
 	)
 
-	print(nrow(similar_samples))
 	# Assign folds based on category
 	if (nrow(similar_samples) > 0) {
-		folds_df$fold[folds_df$category == "similar"] <- RDM_folds$fold
+		folds_df$fold[folds_df$category == 1] <- RDM_folds$fold
 	}
 
 	if (nrow(dissim_samples) > 0) {
-		folds_df$fold[folds_df$category == "dissimilar"] <- SP_folds$fold
+		folds_df$fold[folds_df$category == 2] <- SP_folds$fold
 	}
 
 	# Drop the category column if you don’t want it in the final output
@@ -171,5 +170,5 @@ DA_CV <- function(samples, target, env_stack, nodata_value, folds_k, cate_num, a
 	runtime <- Sys.time() - start_time
 	message("DA-CV completed in ", round(runtime, 1), " seconds.")
 
-	return(DA_folds)
+	return(list("DA_folds" = DA_folds, "dissimilarity_map" = prob_raster, "threshold" = threshold))
 }
