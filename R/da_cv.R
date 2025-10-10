@@ -19,7 +19,7 @@
 #'   \item{dissimilarity}{Dissimilarity index D; ranging from 0 to 1}
 #'   \item{threshold}{Threshold T(D) = D * 0.5}
 #' 	 \item{similarity_raster}{Similarity raster}
-#' 	 \item{category_raster}{Binarized similarity raster}
+#' 	 \item{category_raster}{Binarized similarity raster. 1 - Different, 2 - Similar}
 #'   \item{weights}{Relative weights of "similar" and "different" areas}
 #'   \item{folds_RDM}{folds from RDM-CV}
 #'   \item{folds_SP}{folds from SP-CV}
@@ -36,7 +36,7 @@
 #'   \item Threshold map at T(D) = D * 0.5 to classify cells into
 #'   \{similar, different\}.
 #'   \item Run RDM-CV on "similar" subset, spatial+ CV on "different" subset.
-#'   \item Combine RMSEs via weighted average by area proportion.
+#'   \item Combine RMSEs via weighted average by area proportion. (Needs to be done manually after running \code{DA_CV()})
 #' }
 #'
 #' @examples
@@ -229,7 +229,7 @@ DA_CV <- function(
 		similarity_raster = prob_raster,
 		category_raster = category_raster,
 		weights = c(similar = sim_ratio, different = diff_ratio),
-		folds_RDM = folds_rdm,
-		folds_SP = folds_sp
+		folds_RDM = folds_rdm$fold,
+		folds_SP = folds_sp$fold
 	))
 }
