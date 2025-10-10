@@ -25,28 +25,28 @@ example_DA_CV <- function() {
 	terra::values(env1) <- runif(terra::ncell(env1))
 	env2 <- terra::rast(target)
 	terra::values(env2) <- runif(terra::ncell(env2))
-	env_stack <- c(env1, env2)
-	names(env_stack) <- c("predictor_1", "predictor_2") # ensure RF variable names match
+	env_stack <- c(target, env1, env2)
+	names(env_stack) <- c("response", "predictor_1", "predictor_2") # ensure RF variable names match
 
 	# Generate some random sample points
 	set.seed(42)
 	pts <- data.frame(
 		x = runif(10, 0, 10),
-		y = runif(10, 0, 10),
-		ID = 1:10,
-		target = runif(10, 50, 150) # numeric target for CV functions
+		y = runif(10, 0, 10)
 	)
 	samples <- sf::st_as_sf(pts, coords = c("x", "y"), crs = terra::crs(target))
+	samples <- terra::extract(env_stack, samples, bind = TRUE) |>
+		st_as_sf()
 
 	# Run DA_CV
 	out <- DA_CV(
 		samples = samples,
-		target = target,
-		env_stack = env_stack,
-		nodata_value = NA,
-		folds_k = 10,
-		cate_num = 2,
-		autoc_threshold = 0.3
+		predictors = env_stack,
+		response = "response",
+		folds_k = 5,
+		autoc_threshold = 0.2,
+		cate_num = 5,
+		seed = 10
 	)
 
 	return(list(samples = samples, target = target, env_stack = env_stack, out = out$DA_folds))
