@@ -2,77 +2,94 @@
 % Please edit documentation in R/da_cv.R
 \name{DA_CV}
 \alias{DA_CV}
-\title{Domain Adaptive Cross-Validation (DA-CV)}
+\title{Dissimilarity-Adaptive Cross-Validation (DA-CV) RMSE}
 \usage{
 DA_CV(
   samples,
-  target,
-  env_stack,
-  nodata_value,
-  folds_k,
-  cate_num,
-  autoc_threshold
+  predictors,
+  response,
+  folds_k = 5,
+  autoc_threshold = 0.2,
+  cate_num = 5,
+  seed = NULL
 )
 }
 \arguments{
-\item{samples}{An \code{sf} object. Must contain sample locations (POINT geometry)
-and attributes including target variable and (optionally) sample IDs.}
+\item{samples}{An \code{sf} object with point samples. Must include the response
+variable and predictor variables as attributes.}
 
-\item{target}{A \code{SpatRaster}. Target raster (e.g., biomass).}
+\item{predictors}{A \code{terra::rast} object containing predictor rasters
+aligned to the study area.}
 
-\item{env_stack}{A \code{SpatRaster}. Stack of environmental predictor rasters.}
-
-\item{nodata_value}{Numeric. Value in \code{target} that indicates missing data.}
+\item{response}{Name of the response column in \code{samples}.}
 
 \item{folds_k}{Integer. Number of folds for cross-validation.}
 
-\item{cate_num}{Integer. Number of categorical covariates.}
+\item{autoc_threshold}{Numeric. Spatial autocorrelation threshold for spatial+ CV.}
 
-\item{autoc_threshold}{Numeric. Spatial autocorrelation threshold for SP-CV.}
+\item{cate_num}{Integer. Number of spatial clusters (used in spatial+ CV).}
+
+\item{seed}{Optional integer. Random seed for reproducibility (passed to \code{set.seed()}).}
 }
 \value{
-A list containing a data frame with DA-CV fold assignments, the dissimilarity raster, as well as the threshold used to classify this raster.
-Additionally writes probability and category rasters, and a CSV with fold assignments.
+A list with components:
+\describe{
+\item{dissimilarity}{Dissimilarity index D; ranging from 0 to 1}
+\item{threshold}{Threshold T(D) = D * 0.5}
+\item{similarity_raster}{Similarity raster}
+\item{category_raster}{Binarized similarity raster}
+\item{weights}{Relative weights of "similar" and "different" areas}
+\item{folds_RDM}{folds from RDM-CV}
+\item{folds_SP}{folds from SP-CV}
+}
 }
 \description{
-Implements prediction-domain adaptive cross-validation (DA-CV). This method combines random-domain cross-validation (RDM-CV)
-for "similar" prediction regions and spatial cross-validation (SP-CV) for
-"dissimilar" prediction regions, based on dissimilarity quantification via
-adversarial validation.
+This function implements dissimilarity-adaptive cross-validation (DA-CV),
+which combines random CV (RDM-CV) and spatial CV (SP-CV) based on
+adversarial validation (AV). The method follows the framework described in
+\href{doi:10.1016/j.ecoinf.2025.103287}{Wang et al., 2015}.
+}
+\details{
+Steps:
+\enumerate{
+\item Generate adversarial validation dataset by combining sample points
+with randomly sampled prediction locations from \code{predictors}.
+\item Train a classifier (random forest) to distinguish samples from
+prediction locations.
+\item Evaluate classifier via AUC → dissimilarity index D.
+\item Apply classifier to all raster cells → similarity map.
+\item Threshold map at T(D) = D * 0.5 to classify cells into
+\{similar, different\}.
+\item Run RDM-CV on "similar" subset, spatial+ CV on "different" subset.
+\item Combine RMSEs via weighted average by area proportion.
+}
 }
 \examples{
+\dontrun{
 library(sf)
 library(terra)
 
-# Create a simple raster as "target"
-target <- rast(nrows = 10, ncols = 10, xmin = 0, xmax = 10, ymin = 0, ymax = 10)
-values(target) <- matrix(runif(100, 50, 150), nrow = 10, ncol = 10)
+# Sample points
+pts <- st_as_sf(data.frame(
+  x = runif(50, 0, 100),
+  y = runif(50, 0, 100),
+  yvar = rnorm(50)
+), coords = c("x", "y"), crs = 32633)
 
-# Create two simple environmental predictor rasters
-env1 <- rast(target); values(env1) <- runif(ncell(env1))
-env2 <- rast(target); values(env2) <- runif(ncell(env2))
-env_stack <- c(env1, env2)
+# Predictor rasters
+r <- rast(ncols=100, nrows=100, xmin=0, xmax=100, ymin=0, ymax=100)
+values(r) <- runif(ncell(r))
 
-# Generate some random sample points inside the raster extent
-set.seed(42)
-pts <- data.frame(
-  x = runif(10, 0, 10),
-  y = runif(10, 0, 10),
-  ID = 1:10
+# Run DA-CV (RDM_CV and spatial_plus_cv (must be available)
+result <- DA_CV(
+  samples = pts,
+  predictors = r,
+  response = "yvar",
+  folds_k = 5,
+  autoc_threshold = 0.2,
+  cate_num = 5
 )
-samples <- st_as_sf(pts, coords = c("x", "y"), crs = crs(target))
-
-# Run DA-CV with small folds for demo
-# (requires RDM_CV() and spatial_plus_cv() to be implemented in the package)
-out <- DA_CV(
-  samples = samples,
-  target = target,
-  env_stack = env_stack,
-  nodata_value = NA,
-  folds_k = 2,
-  cate_num = 2,
-  autoc_threshold = 0.3
-)
-print(out)
+print(result$RMSE)
+}
 
 }

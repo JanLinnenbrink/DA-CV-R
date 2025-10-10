@@ -3,7 +3,7 @@
 #' This function implements dissimilarity-adaptive cross-validation (DA-CV),
 #' which combines random CV (RDM-CV) and spatial CV (SP-CV) based on
 #' adversarial validation (AV). The method follows the framework described in
-#' \insertCite{doi:10.1016/j.ecoinf.2025.103287}{yourpackage}.
+#' [Wang et al., 2015](doi:10.1016/j.ecoinf.2025.103287).
 #'
 #' @param samples An `sf` object with point samples. Must include the response
 #'   variable and predictor variables as attributes.
@@ -13,12 +13,13 @@
 #' @param folds_k Integer. Number of folds for cross-validation.
 #' @param autoc_threshold Numeric. Spatial autocorrelation threshold for spatial+ CV.
 #' @param cate_num Integer. Number of spatial clusters (used in spatial+ CV).
+#' @param seed Optional integer. Random seed for reproducibility (passed to \code{set.seed()}).
 #' @return A list with components:
 #' \describe{
-#'   \item{dissimilarity}{Dissimilarity index D [0,1]}
+#'   \item{dissimilarity}{Dissimilarity index D; ranging from 0 to 1}
 #'   \item{threshold}{Threshold T(D) = D * 0.5}
-#' 	 \item{similarity_raster} {Similarity raster}
-#' 	 \item{category_raster} {Binarized similarity raster}
+#' 	 \item{similarity_raster}{Similarity raster}
+#' 	 \item{category_raster}{Binarized similarity raster}
 #'   \item{weights}{Relative weights of "similar" and "different" areas}
 #'   \item{folds_RDM}{folds from RDM-CV}
 #'   \item{folds_SP}{folds from SP-CV}
@@ -105,7 +106,7 @@ DA_CV <- function(
 	# 3) exclude cells that contain sample points
 	samp_xy <- sf::st_coordinates(samples)
 	samp_cells <- terra::cellFromXY(predictors, samp_xy) # may contain NA if some samples outside raster
-	samp_cells <- unique(na.omit(samp_cells))
+	samp_cells <- unique(samp_cells[!is.na(samp_cells)])
 	allowed_cells <- setdiff(valid_cells, samp_cells)
 	if (length(allowed_cells) < n_samp) {
 		stop("Not enough allowed cells after excluding sample cells")
@@ -155,7 +156,7 @@ DA_CV <- function(
 	)
 
 	# 9) evaluate classifier: get probability of class "1" on test set
-	pred_test <- predict(rf, data = test_df)$predictions
+	pred_test <- stats::predict(rf, data = test_df)$predictions
 	# predictions is a matrix with column names equal to factor levels ("0","1")
 	if (!"1" %in% colnames(pred_test)) {
 		# fallback: take second column if labels are ordered differently
@@ -172,7 +173,7 @@ DA_CV <- function(
 		predictors,
 		rf,
 		fun = function(model, data) {
-			p <- predict(model, data = data)$predictions
+			p <- stats::predict(model, data = data)$predictions
 			if ("1" %in% colnames(p)) {
 				return(p[, "1"])
 			} else {

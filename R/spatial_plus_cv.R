@@ -83,7 +83,7 @@ spatial_plus_cv <- function(
 		clusters <- lapply(seq_len(nrow(pts_df)), function(i) list(ids = i))
 	} else {
 		model <- cluster::agnes(coords, diss = FALSE, metric = "euclidean", method = "complete")
-		cluster_labels <- stats::cutree(as.hclust(model), h = sp_threshold)
+		cluster_labels <- stats::cutree(stats::as.hclust(model), h = sp_threshold)
 		clusters <- lapply(unique(cluster_labels), function(cl) {
 			list(ids = which(cluster_labels == cl))
 		})

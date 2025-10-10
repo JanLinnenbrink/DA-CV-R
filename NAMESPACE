@@ -2,5 +2,4 @@
 
 export(DA_CV)
 export(RDM_CV)
-export(example_DA_CV)
 export(spatial_plus_cv)
