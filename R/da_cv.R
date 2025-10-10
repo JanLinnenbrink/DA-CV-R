@@ -3,7 +3,7 @@
 #' This function implements dissimilarity-adaptive cross-validation (DA-CV),
 #' which combines random CV (RDM-CV) and spatial CV (SP-CV) based on
 #' adversarial validation (AV). The method follows the framework described in
-#' [Wang et al., 2015](doi:10.1016/j.ecoinf.2025.103287).
+#' [Wang et al., 2025](https://doi.org/10.1016/j.ecoinf.2025.103287).
 #'
 #' @param samples An `sf` object with point samples. Must include the response
 #'   variable and predictor variables as attributes.
