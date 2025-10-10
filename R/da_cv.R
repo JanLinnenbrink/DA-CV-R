@@ -1,4 +1,4 @@
-#' Dissimilarity-Adaptive Cross-Validation (DA-CV) RMSE
+#' Dissimilarity-Adaptive Cross-Validation (DA-CV)
 #'
 #' This function implements dissimilarity-adaptive cross-validation (DA-CV),
 #' which combines random CV (RDM-CV) and spatial CV (SP-CV) based on
@@ -35,7 +35,7 @@
 #'   \item Apply classifier to all raster cells → similarity map.
 #'   \item Threshold map at T(D) = D * 0.5 to classify cells into
 #'   \{similar, different\}.
-#'   \item Run RDM-CV on "similar" subset, spatial+ CV on "different" subset.
+#'   \item Calculate random and spatial+ cross-validation splits
 #'   \item Combine RMSEs via weighted average by area proportion. (Needs to be done manually after running \code{DA_CV()})
 #' }
 #'
@@ -64,7 +64,7 @@
 #'   autoc_threshold = 0.2,
 #'   cate_num = 5
 #' )
-#' print(result$RMSE)
+#' print(result$weights)
 #' }
 #'
 #' @export
